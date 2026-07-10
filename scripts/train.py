@@ -266,6 +266,14 @@ def main(config: _config.TrainConfig):
             info_str = ", ".join(f"{k}={v:.4f}" for k, v in reduced_info.items())
             pbar.write(f"Step {step}: {info_str}")
             wandb.log(reduced_info, step=step)
+            # FreeMani GUI reads this line to draw the live loss curve (see
+            # freemani/gui/jobs.py METRIC_PREFIX). Harmless outside the GUI.
+            import json as _json
+
+            print(
+                "@metric " + _json.dumps({"step": int(step), **{k: float(v) for k, v in reduced_info.items()}}),
+                flush=True,
+            )
             infos = []
         batch = next(data_iter)
 
