@@ -20,6 +20,7 @@ import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
 import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
+import openpi.policies.yam_policy as yam_policy
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.droid_rlds_dataset as droid_rlds_dataset
@@ -356,6 +357,54 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 
 
 @dataclasses.dataclass(frozen=True)
+class LeRobotYamDataConfig(DataConfigFactory):
+    """Bimanual YAM (FreeMani) LeRobot v3.0 datasets. See yam_policy.py."""
+
+    # FreeMani records absolute target joint angles, so convert the 12 arm-joint
+    # action dims to deltas (relative to the current state) while leaving the two
+    # gripper dims absolute — the layout is [L 6 joints, L gripper, R 6 joints, R gripper].
+    use_delta_joint_actions: bool = True
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        # Rename the LeRobot feature keys onto the keys yam_policy expects.
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation/image": "observation.images.top_rgb",
+                        "observation/left_wrist": "observation.images.left_rgb",
+                        "observation/right_wrist": "observation.images.right_rgb",
+                        "observation/state": "observation.state",
+                        "actions": "action",
+                        # Carry the prompt through (PromptFromLeRobotTask sets it from
+                        # the task); RepackTransform drops any key not listed here.
+                        "prompt": "prompt",
+                    }
+                )
+            ]
+        )
+        data_transforms = _transforms.Group(
+            inputs=[yam_policy.YamInputs(model_type=model_config.model_type)],
+            outputs=[yam_policy.YamOutputs()],
+        )
+        if self.use_delta_joint_actions:
+            # 6 joints delta, 1 gripper absolute, per arm (14 dims total).
+            mask = _transforms.make_bool_mask(6, -1, 6, -1)
+            data_transforms = data_transforms.push(
+                inputs=[_transforms.DeltaActions(mask)],
+                outputs=[_transforms.AbsoluteActions(mask)],
+            )
+        model_transforms = ModelTransformFactory()(model_config)
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class RLDSDroidDataConfig(DataConfigFactory):
     """
     Config for training on DROID, using RLDS data format (for efficient training on larger datasets).
@@ -674,6 +723,38 @@ _CONFIGS = [
         # Below you can define other hyperparameters like the learning rate, number of training steps, etc.
         # Check the base TrainConfig class for a full list of available hyperparameters.
         num_train_steps=30_000,
+    ),
+    #
+    # FreeMani (bimanual YAM).
+    #
+    TrainConfig(
+        name="pi0_yam",
+        model=pi0_config.Pi0Config(),
+        data=LeRobotYamDataConfig(
+            repo_id="put_the_bottle_into_the_bin",
+            base_config=DataConfig(
+                prompt_from_task=True,
+                # FreeMani's LeRobot action feature is named "action" (singular).
+                action_sequence_keys=("action",),
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("/nfs_old/minghaoye/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+    ),
+    TrainConfig(
+        name="pi0_yam_lora",
+        # Low-memory LoRA finetune variant.
+        model=pi0_config.Pi0Config(paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotYamDataConfig(
+            repo_id="put_the_bottle_into_the_bin",
+            base_config=DataConfig(prompt_from_task=True, action_sequence_keys=("action",)),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("/nfs_old/minghaoye/checkpoints/pi0_base/params"),
+        num_train_steps=30_000,
+        freeze_filter=pi0_config.Pi0Config(
+            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
+        ema_decay=None,
     ),
     TrainConfig(
         name="pi0_libero_low_mem_finetune",
