@@ -6,9 +6,6 @@ YAM episodes are converted to LeRobot v3.0 with:
   observation.images.top_rgb     third-person (overhead)
   observation.images.left_rgb    left view   -> left wrist slot
   observation.images.right_rgb   right view  -> right wrist slot
-
-Mirrors libero_policy.py; the only dataset-specific bits are the 3 image slots and
-the 14-dim state/action (returned unpadded by Outputs).
 """
 
 import dataclasses
