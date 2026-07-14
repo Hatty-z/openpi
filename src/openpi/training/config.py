@@ -738,7 +738,7 @@ _CONFIGS = [
                 action_sequence_keys=("action",),
             ),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("/nfs_old/minghaoye/checkpoints/pi0_base/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=30_000,
     ),
     TrainConfig(
@@ -749,7 +749,7 @@ _CONFIGS = [
             repo_id="put_the_bottle_into_the_bin",
             base_config=DataConfig(prompt_from_task=True, action_sequence_keys=("action",)),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("/nfs_old/minghaoye/checkpoints/pi0_base/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=30_000,
         freeze_filter=pi0_config.Pi0Config(
             paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
@@ -769,7 +769,7 @@ _CONFIGS = [
                 action_sequence_keys=("action",),
             ),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("/nfs_old/minghaoye/checkpoints/pi05_base/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         num_train_steps=30_000,
     ),
     TrainConfig(
@@ -781,7 +781,7 @@ _CONFIGS = [
             repo_id="put_the_bottle_into_the_bin",
             base_config=DataConfig(prompt_from_task=True, action_sequence_keys=("action",)),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("/nfs_old/minghaoye/checkpoints/pi05_base/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         num_train_steps=30_000,
         freeze_filter=pi0_config.Pi0Config(
             pi05=True, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
