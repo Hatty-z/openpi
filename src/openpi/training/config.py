@@ -756,6 +756,38 @@ _CONFIGS = [
         ).get_freeze_filter(),
         ema_decay=None,
     ),
+    #
+    # pi0.5 on the FreeMani YAM dataset. 
+    #
+    TrainConfig(
+        name="pi05_yam",
+        model=pi0_config.Pi0Config(pi05=True),
+        data=LeRobotYamDataConfig(
+            repo_id="put_the_bottle_into_the_bin",
+            base_config=DataConfig(
+                prompt_from_task=True,
+                action_sequence_keys=("action",),
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("/nfs_old/minghaoye/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+    ),
+    TrainConfig(
+        name="pi05_yam_lora",
+        model=pi0_config.Pi0Config(
+            pi05=True, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ),
+        data=LeRobotYamDataConfig(
+            repo_id="put_the_bottle_into_the_bin",
+            base_config=DataConfig(prompt_from_task=True, action_sequence_keys=("action",)),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("/nfs_old/minghaoye/checkpoints/pi05_base/params"),
+        num_train_steps=30_000,
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
+        ema_decay=None,
+    ),
     TrainConfig(
         name="pi0_libero_low_mem_finetune",
         # Here is an example of loading a pi0 model for LoRA fine-tuning.
