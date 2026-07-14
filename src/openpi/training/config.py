@@ -358,12 +358,16 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 
 @dataclasses.dataclass(frozen=True)
 class LeRobotYamDataConfig(DataConfigFactory):
-    """Bimanual YAM (FreeMani) LeRobot v3.0 datasets. See yam_policy.py."""
+    """YAM (FreeMani) LeRobot v3.0 datasets. See yam_policy.py."""
 
-    # FreeMani records absolute target joint angles, so convert the 12 arm-joint
-    # action dims to deltas (relative to the current state) while leaving the two
-    # gripper dims absolute — the layout is [L 6 joints, L gripper, R 6 joints, R gripper].
+    # FreeMani records absolute target joint angles, so convert the arm-joint action
+    # dims to deltas (relative to the current state) while leaving the gripper dims
+    # absolute — the per-arm layout is [6 joints, 1 gripper].
     use_delta_joint_actions: bool = True
+    # Arms in the dataset: 2 = bimanual (14-D, default), 1 = single-arm (7-D). Drives
+    # the action dim and the delta mask so a single-arm dataset trains without the
+    # 14-D bimanual layout being hardcoded.
+    num_arms: int = 2
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
@@ -386,11 +390,12 @@ class LeRobotYamDataConfig(DataConfigFactory):
         )
         data_transforms = _transforms.Group(
             inputs=[yam_policy.YamInputs(model_type=model_config.model_type)],
-            outputs=[yam_policy.YamOutputs()],
+            outputs=[yam_policy.YamOutputs(action_dim=7 * self.num_arms)],
         )
         if self.use_delta_joint_actions:
-            # 6 joints delta, 1 gripper absolute, per arm (14 dims total).
-            mask = _transforms.make_bool_mask(6, -1, 6, -1)
+            # Per arm: 6 joints delta, 1 gripper absolute. (6,-1) for single, (6,-1,6,-1)
+            # for bimanual — i.e. repeated once per arm.
+            mask = _transforms.make_bool_mask(*sum(((6, -1) for _ in range(self.num_arms)), ()))
             data_transforms = data_transforms.push(
                 inputs=[_transforms.DeltaActions(mask)],
                 outputs=[_transforms.AbsoluteActions(mask)],

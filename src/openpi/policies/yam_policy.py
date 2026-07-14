@@ -72,7 +72,11 @@ class YamInputs(transforms.DataTransformFn):
 
 @dataclasses.dataclass(frozen=True)
 class YamOutputs(transforms.DataTransformFn):
-    """Strip model action padding back to YAM's 14 dims (inference only)."""
+    """Strip model action padding back to YAM's real dims (inference only).
+
+    ``action_dim`` is 7 per arm (6 joints + 1 gripper): 14 bimanual, 7 single-arm."""
+
+    action_dim: int = YAM_ACTION_DIM
 
     def __call__(self, data: dict) -> dict:
-        return {"actions": np.asarray(data["actions"][..., :YAM_ACTION_DIM])}
+        return {"actions": np.asarray(data["actions"][..., : self.action_dim])}

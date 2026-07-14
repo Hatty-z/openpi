@@ -5,6 +5,8 @@ will compute the mean and standard deviation of the data in the dataset and save
 to the config assets directory.
 """
 
+import dataclasses
+
 import numpy as np
 import tqdm
 import tyro
@@ -86,9 +88,16 @@ def create_rlds_dataloader(
     return data_loader, num_batches
 
 
-def main(config_name: str, max_frames: int | None = None):
+def main(config_name: str, repo_id: str | None = None, num_arms: int | None = None, max_frames: int | None = None):
     config = _config.get_config(config_name)
-    data_config = config.data.create(config.assets_dirs, config.model)
+    # num_arms lives on the data-config factory and shapes the transforms, so override it
+    # BEFORE create() (train.py takes --data.num-arms; keep the two in sync for single-arm).
+    data_factory = config.data
+    if num_arms is not None and hasattr(data_factory, "num_arms"):
+        data_factory = dataclasses.replace(data_factory, num_arms=num_arms)
+    data_config = data_factory.create(config.assets_dirs, config.model)
+    if repo_id is not None:
+        data_config = dataclasses.replace(data_config, repo_id=repo_id)
 
     if data_config.rlds_data_dir is not None:
         data_loader, num_batches = create_rlds_dataloader(
