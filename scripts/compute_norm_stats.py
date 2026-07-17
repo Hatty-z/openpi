@@ -117,7 +117,9 @@ def main(config_name: str, repo_id: str | None = None, num_arms: int | None = No
 
     norm_stats = {key: stats.get_statistics() for key, stats in stats.items()}
 
-    output_path = config.assets_dirs / data_config.repo_id
+    # Write under asset_id (falls back to repo_id when the config doesn't set one) so the
+    # stats land where train/serve load them (create_base_config reads assets/<asset_id>).
+    output_path = config.assets_dirs / (data_config.asset_id or data_config.repo_id)
     print(f"Writing stats to: {output_path}")
     normalize.save(output_path, norm_stats)
 

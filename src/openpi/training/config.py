@@ -368,6 +368,11 @@ class LeRobotYamDataConfig(DataConfigFactory):
     # the action dim and the delta mask so a single-arm dataset trains without the
     # 14-D bimanual layout being hardcoded.
     num_arms: int = 2
+    # Store norm stats under a stable asset id ("yam") instead of the dataset repo_id.
+    # repo_id is only a default here (overridden by --data.repo-id at train), so keying
+    # assets off it makes serve -- which uses the config's default repo_id -- look under
+    # the wrong name. A fixed asset_id keeps compute/train/serve consistent for any dataset.
+    assets: AssetsConfig = dataclasses.field(default_factory=lambda: AssetsConfig(asset_id="yam"))
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
